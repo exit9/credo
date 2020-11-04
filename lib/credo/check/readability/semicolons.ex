@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.Semicolons do
   use Credo.Check,
     base_priority: :high,
+    tags: [:formatter],
     explanations: [
       check: """
       Don't use ; to separate statements and expressions.
@@ -22,7 +23,9 @@ defmodule Credo.Check.Readability.Semicolons do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  # TODO: consider for experimental check front-loader (tokens)
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     source_file

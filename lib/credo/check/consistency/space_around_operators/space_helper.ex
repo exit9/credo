@@ -25,10 +25,16 @@ defmodule Credo.Check.Consistency.SpaceAroundOperators.SpaceHelper do
   Examples:
   x..-1   # .. is the operator here and there is usually no space after that
   """
+  def usually_no_space_after?({:"(", _}, {:dual_op, _, :-}, {:identifier, _, _}), do: true
   def usually_no_space_after?({:"(", _}, {:dual_op, _, :-}, {:number, _, _}), do: true
   def usually_no_space_after?({:"(", _}, {:dual_op, _, :-}, {:int, _, _}), do: true
   def usually_no_space_after?({:"(", _}, {:dual_op, _, :-}, {:float, _, _}), do: true
   def usually_no_space_after?({:"(", _}, {:dual_op, _, :-}, {:flt, _, _}), do: true
+  def usually_no_space_after?({:",", _}, {:dual_op, _, :-}, {:identifier, _, _}), do: true
+  def usually_no_space_after?({:",", _}, {:dual_op, _, :-}, {:number, _, _}), do: true
+  def usually_no_space_after?({:",", _}, {:dual_op, _, :-}, {:int, _, _}), do: true
+  def usually_no_space_after?({:",", _}, {:dual_op, _, :-}, {:float, _, _}), do: true
+  def usually_no_space_after?({:",", _}, {:dual_op, _, :-}, {:flt, _, _}), do: true
   def usually_no_space_after?({_, _, :^}, {_, _, :-}, _), do: true
   def usually_no_space_after?({_, _, :=}, {_, _, :-}, _), do: true
   def usually_no_space_after?({_, _, :..}, {_, _, :-}, _), do: true
@@ -41,6 +47,7 @@ defmodule Credo.Check.Consistency.SpaceAroundOperators.SpaceHelper do
   def operator?({:dual_op, _, _}), do: true
   def operator?({:mult_op, _, _}), do: true
   def operator?({:two_op, _, _}), do: true
+  def operator?({:concat_op, _, _}), do: true
   def operator?({:rel_op, _, _}), do: true
   def operator?({:rel_op2, _, _}), do: true
   def operator?({:and_op, _, _}), do: true

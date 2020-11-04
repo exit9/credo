@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.TrailingWhiteSpace do
   use Credo.Check,
     base_priority: :low,
+    tags: [:formatter],
     param_defaults: [
       ignore_strings: true
     ],
@@ -20,7 +21,8 @@ defmodule Credo.Check.Readability.TrailingWhiteSpace do
   alias Credo.Code.Heredocs
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     ignore_strings = Params.get(params, :ignore_strings, __MODULE__)
 
@@ -42,7 +44,7 @@ defmodule Credo.Check.Readability.TrailingWhiteSpace do
 
   defp traverse_line([{line_no, line} | tail], issues, issue_meta) do
     issues =
-      case Regex.run(~r/\h+$/, line, return: :index) do
+      case Regex.run(~r/\h+$/u, line, return: :index) do
         [{column, line_length}] ->
           [issue_for(issue_meta, line_no, column + 1, line_length) | issues]
 

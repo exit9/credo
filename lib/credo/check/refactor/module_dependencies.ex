@@ -1,6 +1,7 @@
 defmodule Credo.Check.Refactor.ModuleDependencies do
   use Credo.Check,
     base_priority: :normal,
+    tags: [:controversial],
     param_defaults: [
       max_deps: 10,
       dependency_namespaces: [],
@@ -27,7 +28,8 @@ defmodule Credo.Check.Refactor.ModuleDependencies do
   alias Credo.Code.Module
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     max_deps = Params.get(params, :max_deps, __MODULE__)

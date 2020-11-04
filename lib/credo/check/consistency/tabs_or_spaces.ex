@@ -2,6 +2,7 @@ defmodule Credo.Check.Consistency.TabsOrSpaces do
   use Credo.Check,
     run_on_all: true,
     base_priority: :high,
+    tags: [:formatter],
     explanations: [
       check: """
       Tabs should be used consistently.
@@ -20,7 +21,8 @@ defmodule Credo.Check.Consistency.TabsOrSpaces do
   @collector Credo.Check.Consistency.TabsOrSpaces.Collector
 
   @doc false
-  def run(source_files, exec, params \\ []) when is_list(source_files) do
+  @impl true
+  def run_on_all_source_files(exec, source_files, params) do
     @collector.find_and_append_issues(source_files, exec, params, &issues_for/3)
   end
 

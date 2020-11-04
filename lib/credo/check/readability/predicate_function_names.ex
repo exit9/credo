@@ -25,6 +25,19 @@ defmodule Credo.Check.Readability.PredicateFunctionNames do
 
       * For guard-safe macros they should have the prefix `is_` and not end in a question mark.
 
+          # preferred
+
+          defmacro is_user(cookie) do
+          end
+
+          # NOT preferred
+
+          defmacro is_user?(cookie) do
+          end
+
+          defmacro user?(cookie) do
+          end
+
       Like all `Readability` issues, this one is not a technical concern.
       But you can improve the odds of others reading and liking your code by making
       it easier to follow.
@@ -34,12 +47,15 @@ defmodule Credo.Check.Readability.PredicateFunctionNames do
   @def_ops [:def, :defp, :defmacro]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
   end
 
+  # TODO: consider for experimental check front-loader (ast)
+  # NOTE: see below for how we want to avoid `defp = "my_variable"` definitions
   for op <- @def_ops do
     # catch variables named e.g. `defp`
     defp traverse({unquote(op), _meta, nil} = ast, issues, _issue_meta) do

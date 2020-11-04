@@ -1,5 +1,6 @@
 defmodule Credo.Check.Readability.SpaceAfterCommas do
   use Credo.Check,
+    tags: [:formatter],
     explanations: [
       check: """
       You can use white-space after commas to make items of lists,
@@ -39,7 +40,9 @@ defmodule Credo.Check.Readability.SpaceAfterCommas do
   @unspaced_commas ~r/(?<!\W\?)(\,\S)/
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  # TODO: consider for experimental check front-loader (text)
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     source_file

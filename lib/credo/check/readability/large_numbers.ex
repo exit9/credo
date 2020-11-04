@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.LargeNumbers do
   use Credo.Check,
     base_priority: :high,
+    tags: [:formatter],
     param_defaults: [
       only_greater_than: 9_999
     ],
@@ -23,10 +24,9 @@ defmodule Credo.Check.Readability.LargeNumbers do
       ]
     ]
 
-  @moduledoc false
-
   @doc false
-  def run(source_file, params \\ []) do
+  # TODO: consider for experimental check front-loader (tokens)
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     min_number = Params.get(params, :only_greater_than, __MODULE__)
 

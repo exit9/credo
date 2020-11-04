@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.ParenthesesInCondition do
   use Credo.Check,
     base_priority: :high,
+    tags: [:formatter],
     explanations: [
       check: """
       Because `if` and `unless` are macros, the preferred style is to not use
@@ -25,7 +26,9 @@ defmodule Credo.Check.Readability.ParenthesesInCondition do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  # TODO: consider for experimental check front-loader (tokens)
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     source_file

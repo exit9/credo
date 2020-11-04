@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.TrailingBlankLine do
   use Credo.Check,
     base_priority: :low,
+    tags: [:formatter],
     explanations: [
       check: """
       Files should end in a trailing blank line.
@@ -15,7 +16,8 @@ defmodule Credo.Check.Readability.TrailingBlankLine do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     {line_no, last_line} =

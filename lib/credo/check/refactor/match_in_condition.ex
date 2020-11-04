@@ -44,7 +44,8 @@ defmodule Credo.Check.Refactor.MatchInCondition do
   @condition_ops [:if, :unless]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
@@ -55,6 +56,8 @@ defmodule Credo.Check.Refactor.MatchInCondition do
     {ast, issues}
   end
 
+  # TODO: consider for experimental check front-loader (ast)
+  # NOTE: we have to exclude the cases matching the above
   for op <- @condition_ops do
     defp traverse({unquote(op), _meta, arguments} = ast, issues, issue_meta) do
       # remove do/else blocks

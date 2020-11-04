@@ -26,6 +26,10 @@ defmodule Credo.Check.Readability.StringSigils do
 
       This allows us to remove the noise which results from the need to escape
       quotes within quotes.
+
+      Like all `Readability` issues, this one is not a technical concern.
+      But you can improve the odds of others reading and liking your code by making
+      it easier to follow.
       """,
       params: [
         maximum_allowed_quotes: "The maximum amount of escaped quotes you want to tolerate."
@@ -35,7 +39,8 @@ defmodule Credo.Check.Readability.StringSigils do
   @quote_codepoint 34
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     maximum_allowed_quotes = Params.get(params, :maximum_allowed_quotes, __MODULE__)

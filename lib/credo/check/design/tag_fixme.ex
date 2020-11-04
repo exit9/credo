@@ -29,7 +29,8 @@ defmodule Credo.Check.Design.TagFIXME do
   alias Credo.Check.Design.TagHelper
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     include_doc? = Params.get(params, :include_doc, __MODULE__)
 

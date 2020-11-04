@@ -9,17 +9,18 @@ defmodule Credo.Check.Warning.ExpensiveEmptyEnumCheck do
 
       Checking if an enum is empty should be done by using
 
-        Enum.empty?(enum)
+          Enum.empty?(enum)
 
       or
 
-        list == []
+          list == []
 
       """
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
@@ -37,10 +38,12 @@ defmodule Credo.Check.Warning.ExpensiveEmptyEnumCheck do
     {@length_pattern, 0},
     {0, @length_pattern}
   ]
+  @operators [:==, :===]
 
-  for {lhs, rhs} <- @comparisons do
+  for {lhs, rhs} <- @comparisons,
+      operator <- @operators do
     defp traverse(
-           {:==, meta, [unquote(lhs), unquote(rhs)]} = ast,
+           {unquote(operator), meta, [unquote(lhs), unquote(rhs)]} = ast,
            issues,
            issue_meta
          ) do

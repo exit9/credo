@@ -38,7 +38,8 @@ defmodule Credo.Check.Refactor.PerceivedComplexity do
   ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     max_complexity = Params.get(params, :max_complexity, __MODULE__)
 
@@ -53,6 +54,8 @@ defmodule Credo.Check.Refactor.PerceivedComplexity do
     {ast, issues}
   end
 
+  # TODO: consider for experimental check front-loader (ast)
+  # NOTE: see above for how we want to exclude `__using__` macros
   for op <- @def_ops do
     defp traverse(
            {unquote(op), meta, arguments} = ast,

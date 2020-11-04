@@ -1,6 +1,7 @@
 defmodule Credo.Check.Refactor.AppendSingleItem do
   use Credo.Check,
     base_priority: :low,
+    tags: [:controversial],
     explanations: [
       check: """
       When building up large lists, it is faster to prepend than
@@ -22,13 +23,15 @@ defmodule Credo.Check.Refactor.AppendSingleItem do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
   end
 
   # [a] ++ b is OK
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse({:++, _, [[_], _]} = ast, issues, _issue_meta) do
     {ast, issues}
   end

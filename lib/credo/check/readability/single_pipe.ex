@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.SinglePipe do
   use Credo.Check,
     base_priority: :high,
+    tags: [:controversial],
     explanations: [
       check: """
       Pipes (`|>`) should only be used when piping data through multiple calls.
@@ -23,11 +24,16 @@ defmodule Credo.Check.Readability.SinglePipe do
 
       Using a single |> to invoke functions makes the code harder to read. Instead,
       write a function call when a pipeline is only one function long.
+
+      Like all `Readability` issues, this one is not a technical concern.
+      But you can improve the odds of others reading and liking your code by making
+      it easier to follow.
       """
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     {_continue, issues} =
@@ -36,6 +42,7 @@ defmodule Credo.Check.Readability.SinglePipe do
     issues
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse({:|>, _, [{:|>, _, _} | _]} = ast, {_, issues}, _) do
     {ast, {false, issues}}
   end

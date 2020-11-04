@@ -93,6 +93,13 @@ defmodule Credo.Check.Consistency.SpaceAroundOperatorsTest do
         <<102::unsigned-big-integer-size(8), rest::binary>>
         <<102::unsigned-big-integer-8, rest::binary>>
         <<102::signed-little-float-8, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+        <<min_ver::size(16)-unsigned-integer-little, rest::binary>>
+
         <<102::8-integer-big-unsigned, rest::binary>>
         <<102, rest::binary>>
         << valsize :: 32-unsigned, rest::binary >>
@@ -196,16 +203,19 @@ defmodule Credo.Check.Consistency.SpaceAroundOperatorsTest do
     end
   end
   """
-  if Version.match?(System.version(), ">= 1.6.0-rc") do
-    @with_spaces6 """
-    assert -24 == MyModule.fun
-    assert MyModule.fun !=  -24
-    ExUnit.assert -12 == MyApp.fun_that_should_return_a_negative
-    """
-  else
-    @with_spaces6 """
-    """
+  @with_spaces6 """
+  assert -24 == MyModule.fun
+  assert MyModule.fun !=  -24
+  ExUnit.assert -12 == MyApp.fun_that_should_return_a_negative
+  """
+
+  @with_spaces7 """
+  defmodule AlwaysNoSpacesInBinaryTypespecTest do
+    @callback foo() :: <<_::_*8>>
+
+    def foo, do: 1 + 1
   end
+  """
 
   @with_and_without_spaces """
   defmodule OtherModule3 do
@@ -360,6 +370,13 @@ defmodule Credo.Check.Consistency.SpaceAroundOperatorsTest do
       %{acc | "#{date_type}_dates": :foo}
       """
     ]
+    |> to_source_files()
+    |> run_check(@described_check)
+    |> refute_issues()
+  end
+
+  test "it should always allow no spaces in binary typespec" do
+    [@with_spaces7]
     |> to_source_files()
     |> run_check(@described_check)
     |> refute_issues()

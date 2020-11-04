@@ -1,8 +1,142 @@
 # Changelog
 
-## 1.3.0-rc2
+## 1.5.0
 
-- Enable `UnnecessaryAliasExpansion` check by default
+- Credo now requires Elixir 1.7 or newer
+- Refactor check runner (much faster now for common scenarios)
+- Add param `allow_acronyms` to check `Credo.Check.Readability.FunctionNames`
+- Add name of check to message when printing issues with `--verbose`
+- Add support for "dynamic" tagging for checks via `.credo.exs`
+
+      # Overwrite all tags for `FooCheck`
+      {FooCheck, [tags: [:my_tag]]}
+
+      # Add tags for `FooCheck`
+      {SomeCredoCheck, [tags: [:__initial__, :my_tag]]}
+
+  Tags can then be used as usual, via the CLI switch `--checks-with[out]-tag`:
+
+      # Only run checks tagged `:my_tag` during analysis
+      $ mix credo --checks-with-tag my_tag
+
+      # Exclude all checks tagged `:my_tag` from analysis
+      $ mix credo --checks-without-tag my_tag
+
+### New switch to enable file watcher
+
+You can now ask Credo to re-run on file changes:
+
+      $ mix credo --watch
+
+### New `diff` command
+
+You can now ask Credo to only report changes in files that were changed since a given Git ref:
+
+      $ mix credo diff HEAD^
+      $ mix credo diff master
+
+You can, of course, combine this with the new `--watch` switch to iteratively fix issues that have come up since the last release:
+
+      $ mix credo diff v1.4.0 --watch
+
+### New general check param `:files`
+
+You can now include/exclude specific files or patterns for specific checks.
+
+The syntax is the same as for the top-level `:files` key:
+
+```elixir
+# check included for Elixir files in lib/ only
+{Credo.Check.Consistency.ExceptionNames, files: %{included: ["lib/**/*.ex"]}},
+
+# check excluded for a specific file
+{Credo.Check.Warning.IExPry, files: %{excluded: ["lib/debug_server.ex"]}},
+
+# check included for all Elixir script files, but excluded for test scripts
+{Credo.Check.Warning.IoInspect, files: %{included: ["**/*.exs"], excluded: ["**/*_test.exs"]}},
+```
+
+This means that you can now also include/exclude specific files or patterns for your custom checks **by default**.
+
+The syntax is the same as with all other check params:
+
+```elixir
+defmodule MyApp.Check.SomethingAboutTests do
+  use Credo.Check,
+    base_priority: :normal,
+    explanations: [
+      check: """
+      ...
+      """
+    ],
+    param_defaults: [
+      files: %{included: ["**/*_test.exs"]}
+    ]
+```
+
+Please note that these params do not "override" the top-level config, but are applied to the result of the top-level config's resolution.
+
+### New checks
+
+These new checks can now be enabled:
+
+- `Credo.Check.Readability.BlockPipe`
+- `Credo.Check.Readability.ImplTrue`
+- `Credo.Check.Readability.SeparateAliasRequire`
+
+Additionally, `Credo.Check.Warning.ApplicationConfigInModuleAttribute` is a new check which warns about reading environment variables into module attributes at compile-time and is enabled by default.
+
+## 1.4.0
+
+- Credo's schema for pre-release names changes: There is now a `.` after the `rc` like in many other Elixir projects.
+
+- Add support for explaining checks (in addition to issues), i.e.
+
+      $ mix credo explain Credo.Check.Design.AliasUsage
+
+- Add support for tags on checks
+
+  Checks can now declare tags via the `__using__` macro, i.e.
+
+      defmodule MyCheck do
+        use Credo.Check, tags: [:foo]
+
+        def run(%SourceFile{} = source_file, params) do
+          #
+        end
+      end
+
+  Tags can be used via the CLI switch `--checks-with[out]-tag`:
+
+      # Only run checks tagged `:foo` during analysis
+      $ mix credo --checks-with-tag foo
+
+      # Exclude all checks tagged `:foo` from analysis
+      $ mix credo --checks-without-tag foo
+
+- Add validation of check params in config
+
+  If a param is not found, Credo checks for mispellings and suggests corrections:
+
+      $ mix credo
+      ** (config) Credo.Check.Design.AliasUsage: unknown param `fi_called_more_often_than`. Did you mean `if_called_more_often_than`?
+
+- Add auto-generated check docs
+- Add new documentation on Hex with [extra guides](https://hexdocs.pm/credo/1.4.0/overview.html) and [CHANGELOG](https://hexdocs.pm/credo/1.4.0/changelog.html)
+
+## 1.3.2
+
+- Support non-ascii characters in variable names
+- Fix false positive in `Credo.Check.Readability.ParenthesesOnZeroArityDefs`
+
+## 1.3.1
+
+- Fix new check (`Credo.Check.Readability.StrictModuleLayout`)
+- Ignore module attributes in UnsafeToAtom
+
+## 1.3.0
+
+- Enable `Credo.Check.Readability.UnnecessaryAliasExpansion` check by default
 - Fix bugs when removing heredocs and charlists from sources
 - Fix false positive on TrailingWhiteSpace
 - Add `ignore: [:fun1, :fun2]` param to all `UnusedOperation*` checks; to ignore unused `Enum.reduce/3` operations, use
@@ -25,66 +159,71 @@ Of course, we can have the same effect by choosing the pattern less explicitly:
 
 > This deprecates the mandatory use of `@explanation` and `@default_params` module attributes for checks.
 
-  Before `v1.3` you had to define module attributes named `@explanation` and `@default_params` before calling
-  `use Credo.Check`.
+Before `v1.3` you had to define module attributes named `@explanation` and `@default_params` before calling
+`use Credo.Check`.
 
-  Now you can pass `:explanations` (plural) and `:param_defaults` options directly to `use Credo.Check`.
+Now you can pass `:explanations` (plural) and `:param_defaults` options directly to `use Credo.Check`.
 
-  ```elixir
-  defmodule MyCheck do
-    use Credo.Check,
-      category: :warning,
-      base_priority: :high,
-      param_defaults: [param1: 42, param2: "offline"],
-      explanations: [
-        check: "...",
-        params: [
-          param1: "Your favorite number",
-          param2: "Online/Offline mode"
-        ]
+```elixir
+defmodule MyCheck do
+  use Credo.Check,
+    category: :warning,
+    base_priority: :high,
+    param_defaults: [param1: 42, param2: "offline"],
+    explanations: [
+      check: "...",
+      params: [
+        param1: "Your favorite number",
+        param2: "Online/Offline mode"
       ]
+    ]
 
-    def run(source_file, params) do
-      #
-    end
+  def run(%SourceFile{} = source_file, params) do
+    #
   end
-  ```
+end
+```
 
-  Please note that these options
-  are also **just a convenience** to implement the functions specified by the  `Credo.Check` behaviour.
-  You can alternatively implement the respective functions yourself:
+Please note that these options
+are also **just a convenience** to implement the functions specified by the  `Credo.Check` behaviour.
+You can alternatively implement the respective functions yourself:
 
-  ```elixir
-  defmodule MyCheck do
-    use Credo.Check
+```elixir
+defmodule MyCheck do
+  use Credo.Check
 
-    def category, do: :warning
+  def category, do: :warning
 
-    def base_priority, do: :high
+  def base_priority, do: :high
 
-    def explanations do
-      [
-        check: "...",
-        params: [
-          param1: "Your favorite number",
-          param2: "Online/Offline mode"
-        ]
+  def explanations do
+    [
+      check: "...",
+      params: [
+        param1: "Your favorite number",
+        param2: "Online/Offline mode"
       ]
-    end
-
-    def param_defaults, do: [param1: 42, param2: "offline"]
-
-    def run(source_file, params) do
-      #
-    end
+    ]
   end
-  ```
+
+  def param_defaults, do: [param1: 42, param2: "offline"]
+
+  def run(%SourceFile{} = source_file, params) do
+    #
+  end
+end
+```
 
 ### New checks
 
-- Credo.Check.Readability.StrictModuleLayout
-- Credo.Check.Readability.WithCustomTaggedTuple
+- `Credo.Check.Readability.StrictModuleLayout`
+- `Credo.Check.Readability.WithCustomTaggedTuple`
+- `Credo.Check.Warning.LeakyEnvironment`
+- `Credo.Check.Warning.UnsafeExec`
 
+## 1.2.3
+
+- Fix performance bottleneck in `Credo.Service.ETSTableHelper`
 
 ## 1.2.2
 
@@ -92,7 +231,7 @@ Of course, we can have the same effect by choosing the pattern less explicitly:
 
 ## 1.2.1
 
-- Actually enable the new check (Credo.Check.Warning.MixEnv)
+- Actually enable the new check (`Credo.Check.Warning.MixEnv`)
 
 ## 1.2.0
 
@@ -112,7 +251,7 @@ Of course, we can have the same effect by choosing the pattern less explicitly:
 
 ### New checks
 
-- Credo.Check.Warning.MixEnv
+- `Credo.Check.Warning.MixEnv`
 
 ## 1.1.5
 

@@ -49,12 +49,45 @@ defmodule Credo.Sources do
     |> read_files(parse_timeout)
   end
 
+  def find(nil) do
+    []
+  end
+
   def find(paths) when is_list(paths) do
     Enum.flat_map(paths, &find/1)
   end
 
   def find(path) when is_binary(path) do
     recurse_path(path)
+  end
+
+  @doc """
+  Finds sources in a given `directory` using a list of `included` and `excluded`
+  patterns. For `included`, patterns can be file paths, directory paths and globs.
+  For `excluded`, patterns can also be specified as regular expressions.
+
+      iex> Sources.find_in_dir("/home/rrrene/elixir", ["*.ex"], ["not_me.ex"])
+
+      iex> Sources.find_in_dir("/home/rrrene/elixir", ["*.ex"], [~r/messy/])
+  """
+  def find_in_dir(working_dir, included, excluded) do
+    included_patterns = convert_globs_to_local_paths(working_dir, included)
+    excluded_patterns = convert_globs_to_local_paths(working_dir, excluded)
+
+    MapSet.new()
+    |> include(included_patterns)
+    |> exclude(excluded_patterns)
+    |> Enum.sort()
+    |> Enum.take(max_file_count())
+  end
+
+  defp convert_globs_to_local_paths(working_dir, patterns) do
+    patterns
+    |> List.wrap()
+    |> Enum.map(fn
+      pattern when is_binary(pattern) -> Path.expand(pattern, working_dir)
+      pattern -> pattern
+    end)
   end
 
   defp max_file_count do

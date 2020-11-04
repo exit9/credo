@@ -1,24 +1,31 @@
 defmodule Credo.Check.Refactor.NegatedIsNil do
   use Credo.Check,
     base_priority: :low,
+    tags: [:controversial],
     explanations: [
       check: """
       We should avoid negating the `is_nil` predicate function.
-
       Here are a couple of examples:
-
       The code here ...
-
           def fun(%{external_id: external_id, id: id}) when not is_nil(external_id) do
              ...
           end
 
       ... can be refactored to look like this:
-
           def fun(%{external_id: nil, id: id}) do
             ...
           end
+          def fun(%{external_id: external_id, id: id}) do
+            ...
+          end
 
+      ... or even better, can match on what you were expecting on the first place:
+          def fun(%{external_id: external_id, id: id}) when is_binary(external_id) do
+            ...
+          end
+          def fun(%{external_id: nil, id: id}) do
+            ...
+          end
           def fun(%{external_id: external_id, id: id}) do
             ...
           end
@@ -30,7 +37,8 @@ defmodule Credo.Check.Refactor.NegatedIsNil do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params \\ []) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))

@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.MultiAlias do
   use Credo.Check,
     base_priority: :low,
+    tags: [:controversial],
     explanations: [
       check: """
       Multi alias expansion makes module uses harder to search for in large code bases.
@@ -23,12 +24,14 @@ defmodule Credo.Check.Readability.MultiAlias do
   alias Credo.Code
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse(
          {:alias, _, [{{_, _, [{:__aliases__, opts, base_alias}, :{}]}, _, [multi_alias | _]}]} =
            ast,

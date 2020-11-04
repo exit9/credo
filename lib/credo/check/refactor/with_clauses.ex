@@ -70,19 +70,21 @@ defmodule Credo.Check.Refactor.WithClauses do
 
   alias Credo.Code
 
-  @message_only_one_pattern_clause "\"with\" contains only one <- clause and an \"else\" " <>
-                                     "branch, use a \"case\" instead"
-  @message_first_clause_not_pattern "\"with\" doesn't start with a <- clause, " <>
-                                      "move the non-pattern <- clauses outside of the \"with\""
-  @message_last_clause_not_pattern "\"with\" doesn't end with a <- clause, move " <>
-                                     "the non-pattern <- clauses inside the body of the \"with\""
+  @message_only_one_pattern_clause "`with` contains only one <- clause and an `else` " <>
+                                     "branch, use a `case` instead"
+  @message_first_clause_not_pattern "`with` doesn't start with a <- clause, " <>
+                                      "move the non-pattern <- clauses outside of the `with`"
+  @message_last_clause_not_pattern "`with` doesn't end with a <- clause, move " <>
+                                     "the non-pattern <- clauses inside the body of the `with`"
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse({:with, meta, [_, _ | _] = clauses_and_body} = ast, issues, issue_meta)
        when is_list(clauses_and_body) do
     # If clauses_and_body is a list with at least two elements in it, we think

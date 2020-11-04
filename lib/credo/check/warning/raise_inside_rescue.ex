@@ -2,8 +2,9 @@ defmodule Credo.Check.Warning.RaiseInsideRescue do
   use Credo.Check,
     explanations: [
       check: """
-      Using `Kernel.raise` inside of a `rescue` block creates a new stacktrace,
-      which obscures the cause of the original error.
+      Using `Kernel.raise` inside of a `rescue` block creates a new stacktrace.
+
+      Most of the time, this is not what you want to do since it obscures the cause of the original error.
 
       Example:
 
@@ -36,12 +37,14 @@ defmodule Credo.Check.Warning.RaiseInsideRescue do
   @def_ops [:def, :defp, :defmacro, :defmacrop]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse({:try, _meta, _arguments} = ast, issues, issue_meta) do
     case Block.rescue_block_for(ast) do
       {:ok, ast} ->

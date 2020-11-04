@@ -2,6 +2,7 @@ defmodule Credo.Check.Warning.UnsafeToAtom do
   use Credo.Check,
     base_priority: :high,
     category: :warning,
+    tags: [:controversial],
     explanations: [
       check: """
       Creating atoms from unknown or external sources dynamically is a potentially
@@ -35,10 +36,15 @@ defmodule Credo.Check.Warning.UnsafeToAtom do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
+  end
+
+  defp traverse({:@, _, _}, issues, _) do
+    {nil, issues}
   end
 
   defp traverse({{:., _loc, call}, meta, args} = ast, issues, issue_meta) do

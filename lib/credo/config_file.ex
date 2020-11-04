@@ -22,9 +22,7 @@ defmodule Credo.ConfigFile do
             requires: [],
             plugins: [],
             parse_timeout: nil,
-            strict: false,
-            # checks if there is a new version of Credo
-            check_for_updates: true
+            strict: false
 
   @doc """
   Returns Execution struct representing a consolidated Execution for all `.credo.exs`
@@ -41,16 +39,19 @@ defmodule Credo.ConfigFile do
   end
 
   @doc """
-  Returns Execution struct representing a consolidated Execution for
-  the provided config_file merged into the default configuration.
+  Returns the provided config_file merged into the default configuration.
 
   - `config_file`: full path to the custom configuration file
   - `config_name`: name of the configuration to load
   - `safe`: if +true+, the config files are loaded using static analysis rather
             than `Code.eval_string/1`
   """
-  def read_from_file_path(exec, dir, config_file, config_name \\ nil, safe \\ false) do
-    combine_configs([config_file], exec, dir, config_name, safe)
+  def read_from_file_path(exec, dir, config_filename, config_name \\ nil, safe \\ false) do
+    if File.exists?(config_filename) do
+      combine_configs([config_filename], exec, dir, config_name, safe)
+    else
+      {:error, {:notfound, "Given config file does not exist: #{config_filename}"}}
+    end
   end
 
   defp combine_configs(files, exec, dir, config_name, safe) do
@@ -88,18 +89,18 @@ defmodule Credo.ConfigFile do
   end
 
   defp ensure_values_present({:ok, config}) do
+    # TODO: config.check_for_updates is deprecated, but should not lead to a validation error
     config = %__MODULE__{
-      check_for_updates: config.check_for_updates,
-      requires: config.requires || [],
-      plugins: config.plugins || [],
+      checks: config.checks,
+      color: merge_boolean(@default_color, config.color),
       files: %{
         included: merge_files_default(@default_files_included, config.files.included),
         excluded: merge_files_default(@default_files_excluded, config.files.excluded)
       },
-      checks: config.checks,
       parse_timeout: merge_parse_timeout(@default_parse_timeout, config.parse_timeout),
-      strict: merge_boolean(@default_strict, config.strict),
-      color: merge_boolean(@default_color, config.color)
+      plugins: config.plugins || [],
+      requires: config.requires || [],
+      strict: merge_boolean(@default_strict, config.strict)
     }
 
     {:ok, config}
@@ -149,14 +150,13 @@ defmodule Credo.ConfigFile do
       |> Enum.find(&(&1[:name] == config_name))
 
     %__MODULE__{
-      check_for_updates: data[:check_for_updates],
-      requires: data[:requires] || [],
-      plugins: data[:plugins] || [],
-      files: files_from_data(data, dir),
       checks: checks_from_data(data),
+      color: data[:color],
+      files: files_from_data(data, dir),
       parse_timeout: data[:parse_timeout],
-      strict: data[:strict],
-      color: data[:color]
+      plugins: data[:plugins] || [],
+      requires: data[:requires] || [],
+      strict: data[:strict]
     }
   end
 
@@ -224,14 +224,13 @@ defmodule Credo.ConfigFile do
 
   def merge({:ok, base}, {:ok, other}) do
     config_file = %__MODULE__{
-      check_for_updates: merge_boolean(base.check_for_updates, other.check_for_updates),
-      requires: base.requires ++ other.requires,
-      plugins: base.plugins ++ other.plugins,
-      files: merge_files(base, other),
       checks: merge_checks(base, other),
-      strict: merge_boolean(base.strict, other.strict),
+      color: merge_boolean(base.color, other.color),
+      files: merge_files(base, other),
       parse_timeout: merge_parse_timeout(base.parse_timeout, other.parse_timeout),
-      color: merge_boolean(base.color, other.color)
+      plugins: base.plugins ++ other.plugins,
+      requires: base.requires ++ other.requires,
+      strict: merge_boolean(base.strict, other.strict)
     }
 
     {:ok, config_file}

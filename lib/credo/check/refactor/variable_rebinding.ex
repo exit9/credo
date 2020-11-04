@@ -1,5 +1,7 @@
 defmodule Credo.Check.Refactor.VariableRebinding do
   use Credo.Check,
+    tags: [:controversial],
+    param_defaults: [allow_bang: false],
     explanations: [
       check: """
       You might want to refrain from rebinding variables.
@@ -44,7 +46,8 @@ defmodule Credo.Check.Refactor.VariableRebinding do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))

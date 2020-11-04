@@ -2,6 +2,7 @@ defmodule Credo.Check.Consistency.SpaceAroundOperators do
   use Credo.Check,
     run_on_all: true,
     base_priority: :high,
+    tags: [:formatter],
     param_defaults: [ignore: [:|]],
     explanations: [
       check: """
@@ -33,7 +34,8 @@ defmodule Credo.Check.Consistency.SpaceAroundOperators do
   # any related test cases around.
 
   @doc false
-  def run(source_files, exec, params \\ []) when is_list(source_files) do
+  @impl true
+  def run_on_all_source_files(exec, source_files, params) do
     @collector.find_and_append_issues(source_files, exec, params, &issues_for/3)
   end
 
@@ -110,7 +112,20 @@ defmodule Credo.Check.Consistency.SpaceAroundOperators do
     !number_in_function_capture?(line, column)
   end
 
+  defp create_issue?(line, _column, trigger) when trigger == :* do
+    # The Elixir formatter always removes spaces around the asterisk in
+    # typespecs for binaries by default. Credo shouldn't conflict with the
+    # default Elixir formatter settings.
+    !typespec_binary_unit_operator_without_spaces?(line)
+  end
+
   defp create_issue?(_, _, _), do: true
+
+  defp typespec_binary_unit_operator_without_spaces?(line) do
+    # In code this construct can only appear inside a binary typespec. It could
+    # also appear verbatim in a string, but it's rather unlikely...
+    line =~ "_::_*"
+  end
 
   defp arrow_in_typespec?(line, column) do
     # -2 because we need to subtract the operator

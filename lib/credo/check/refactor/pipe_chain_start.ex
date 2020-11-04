@@ -1,5 +1,6 @@
 defmodule Credo.Check.Refactor.PipeChainStart do
   use Credo.Check,
+    tags: [:controversial],
     param_defaults: [
       excluded_argument_types: [],
       excluded_functions: []
@@ -31,7 +32,8 @@ defmodule Credo.Check.Refactor.PipeChainStart do
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     excluded_functions = Params.get(params, :excluded_functions, __MODULE__)
@@ -44,6 +46,7 @@ defmodule Credo.Check.Refactor.PipeChainStart do
     )
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse(
          {:|>, _, [{:|>, _, _} | _]} = ast,
          issues,

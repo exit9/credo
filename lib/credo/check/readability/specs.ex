@@ -1,5 +1,6 @@
 defmodule Credo.Check.Readability.Specs do
   use Credo.Check,
+    tags: [:controversial],
     explanations: [
       check: """
       Functions, callbacks and macros need typespecs.
@@ -19,11 +20,16 @@ defmodule Credo.Check.Readability.Specs do
 
       The check only considers whether the specification is present, it doesn't
       perform any actual type checking.
+
+      Like all `Readability` issues, this one is not a technical concern.
+      But you can improve the odds of others reading and liking your code by making
+      it easier to follow.
       """
     ]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     specs = Credo.Code.prewalk(source_file, &find_specs(&1, &2))
 
@@ -38,7 +44,8 @@ defmodule Credo.Check.Readability.Specs do
   end
 
   defp find_specs({:spec, _, [{_, _, [{name, _, args} | _]}]} = ast, specs)
-       when is_list(args) do
+       when is_list(args) or is_nil(args) do
+    args = with nil <- args, do: []
     {ast, [{name, length(args)} | specs]}
   end
 
@@ -62,6 +69,7 @@ defmodule Credo.Check.Readability.Specs do
     {ast, issues}
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp traverse(
          {:def, meta, [{:when, _, def_ast} | _]},
          issues,
@@ -77,7 +85,9 @@ defmodule Credo.Check.Readability.Specs do
          specs,
          issue_meta
        )
-       when is_list(args) do
+       when is_list(args) or is_nil(args) do
+    args = with nil <- args, do: []
+
     if {name, length(args)} in specs do
       {ast, issues}
     else

@@ -1,6 +1,7 @@
 defmodule Credo.Check.Readability.MaxLineLength do
   use Credo.Check,
     base_priority: :low,
+    tags: [:formatter],
     param_defaults: [
       max_length: 120,
       ignore_definitions: true,
@@ -31,7 +32,8 @@ defmodule Credo.Check.Readability.MaxLineLength do
   @url_regex ~r/[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/\/=]*)/
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
     max_length = Params.get(params, :max_length, __MODULE__)
 
@@ -85,6 +87,7 @@ defmodule Credo.Check.Readability.MaxLineLength do
     end)
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   for op <- @def_ops do
     defp find_definitions({unquote(op), meta, arguments} = ast, definitions)
          when is_list(arguments) do
@@ -96,6 +99,7 @@ defmodule Credo.Check.Readability.MaxLineLength do
     {ast, definitions}
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   defp find_specs({:spec, meta, arguments} = ast, specs) when is_list(arguments) do
     {ast, [meta[:line] | specs]}
   end

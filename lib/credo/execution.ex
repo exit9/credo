@@ -14,12 +14,15 @@ defmodule Credo.Execution do
               all: :boolean,
               files_included: :keep,
               files_excluded: :keep,
+              checks_with_tag: :keep,
+              checks_without_tag: :keep,
               checks: :string,
               config_name: :string,
               config_file: :string,
               color: :boolean,
               crash_on_error: :boolean,
               debug: :boolean,
+              diff_with: :string,
               enable_disabled_checks: :string,
               mute_exit_status: :boolean,
               format: :string,
@@ -31,7 +34,8 @@ defmodule Credo.Execution do
               read_from_stdin: :boolean,
               strict: :boolean,
               verbose: :boolean,
-              version: :boolean
+              version: :boolean,
+              watch: :boolean
             ],
             cli_aliases: [
               a: :all,
@@ -55,22 +59,23 @@ defmodule Credo.Execution do
             parse_timeout: 5000,
             strict: false,
 
-            # checks if there is a new version of Credo
-            check_for_updates: true,
-
             # options, set by the command line
-            min_priority: 0,
-            help: false,
-            version: false,
-            verbose: false,
             all: false,
-            format: nil,
-            enable_disabled_checks: nil,
-            only_checks: nil,
-            ignore_checks: nil,
             crash_on_error: true,
+            diff_with: nil,
+            enable_disabled_checks: nil,
+            format: nil,
+            help: false,
+            ignore_checks_tags: [],
+            ignore_checks: nil,
+            max_concurrent_check_runs: nil,
+            min_priority: 0,
             mute_exit_status: false,
+            only_checks_tags: [],
+            only_checks: nil,
             read_from_stdin: false,
+            verbose: false,
+            version: false,
 
             # state, which is accessed and changed over the course of Credo's execution
             pipeline_map: %{},
@@ -102,8 +107,19 @@ defmodule Credo.Execution do
       {Credo.Execution.Task.ParseOptions, []}
     ],
     initialize_plugins: [
-      # This is where plugins can put their hooks to initialize themselves based on
-      # the params given in the config as well as in their own command line switches.
+      # This is where plugins can "put" their hooks using `Credo.Plugin.append_task/3`
+      # to initialize themselves based on the params given in the config as well as
+      # in their own command line switches.
+      #
+      # Example:
+      #
+      #     defmodule CredoDemoPlugin do
+      #       import Credo.Plugin
+      #
+      #       def init(exec) do
+      #         append_task(exec, :initialize_plugins, CredoDemoPlugin.SetDiffAsDefaultCommand)
+      #       end
+      #     end
     ],
     validate_cli_options: [
       {Credo.Execution.Task.ValidateOptions, []}
@@ -137,11 +153,25 @@ defmodule Credo.Execution do
   alias Credo.Execution.ExecutionSourceFiles
   alias Credo.Execution.ExecutionTiming
 
+  @doc "Builds an Execution struct for a re-run with the the given `argv`, noting to just analyse the `files_that_changed`."
+  def build(%__MODULE__{} = previous_exec, files_that_changed) when is_list(files_that_changed) do
+    previous_exec.argv
+    |> build()
+    |> put_rerun(previous_exec, files_that_changed)
+  end
+
+  def build(argv, files_that_changed) when is_list(files_that_changed) do
+    build(argv)
+  end
+
   @doc "Builds an Execution struct for the the given `argv`."
   def build(argv \\ []) when is_list(argv) do
-    %__MODULE__{argv: argv}
+    max_concurrent_check_runs = System.schedulers_online()
+
+    %__MODULE__{argv: argv, max_concurrent_check_runs: max_concurrent_check_runs}
     |> put_pipeline(__MODULE__, @execution_pipeline)
     |> put_builtin_command("categories", Credo.CLI.Command.Categories.CategoriesCommand)
+    |> put_builtin_command("diff", Credo.CLI.Command.Diff.DiffCommand)
     |> put_builtin_command("explain", Credo.CLI.Command.Explain.ExplainCommand)
     |> put_builtin_command("gen.check", Credo.CLI.Command.GenCheck)
     |> put_builtin_command("gen.config", Credo.CLI.Command.GenConfig)
@@ -157,8 +187,8 @@ defmodule Credo.Execution do
   defp start_servers(%__MODULE__{} = exec) do
     exec
     |> ExecutionConfigFiles.start_server()
-    |> ExecutionSourceFiles.start_server()
     |> ExecutionIssues.start_server()
+    |> ExecutionSourceFiles.start_server()
     |> ExecutionTiming.start_server()
   end
 
@@ -174,9 +204,20 @@ defmodule Credo.Execution do
     {[], [], []}
   end
 
-  def checks(%__MODULE__{checks: checks, only_checks: only_checks, ignore_checks: ignore_checks}) do
-    only_matching = filter_only_checks(checks, only_checks)
-    ignore_matching = filter_ignore_checks(checks, ignore_checks)
+  def checks(%__MODULE__{
+        checks: checks,
+        only_checks: only_checks,
+        only_checks_tags: only_checks_tags,
+        ignore_checks: ignore_checks,
+        ignore_checks_tags: ignore_checks_tags
+      }) do
+    only_matching =
+      checks |> filter_only_checks_by_tags(only_checks_tags) |> filter_only_checks(only_checks)
+
+    ignore_matching_by_name = filter_ignore_checks(checks, ignore_checks)
+    ignore_matching_by_tags = filter_ignore_checks_by_tags(checks, ignore_checks_tags)
+    ignore_matching = ignore_matching_by_name ++ ignore_matching_by_tags
+
     result = only_matching -- ignore_matching
 
     {result, only_matching, ignore_matching}
@@ -215,6 +256,48 @@ defmodule Credo.Execution do
     Enum.map(list, fn match_check ->
       {:ok, match_pattern} = Regex.compile(match_check, "i")
       match_pattern
+    end)
+  end
+
+  defp filter_only_checks_by_tags(checks, nil), do: checks
+  defp filter_only_checks_by_tags(checks, []), do: checks
+  defp filter_only_checks_by_tags(checks, tags), do: filter_checks_by_tags(checks, tags)
+
+  defp filter_ignore_checks_by_tags(_checks, nil), do: []
+  defp filter_ignore_checks_by_tags(_checks, []), do: []
+  defp filter_ignore_checks_by_tags(checks, tags), do: filter_checks_by_tags(checks, tags)
+
+  defp filter_checks_by_tags(_checks, nil), do: []
+  defp filter_checks_by_tags(_checks, []), do: []
+
+  defp filter_checks_by_tags(checks, tags) do
+    tags = Enum.map(tags, &String.to_atom/1)
+
+    Enum.filter(checks, &match_tags(&1, tags, true))
+  end
+
+  defp match_tags(_tuple, [], default_for_empty), do: default_for_empty
+
+  defp match_tags({check, params}, tags, _default_for_empty) do
+    tags_for_check = tags_for_check(check, params)
+
+    Enum.any?(tags, &Enum.member?(tags_for_check, &1))
+  end
+
+  @doc """
+  Returns the tags for a given `check` and its `params`.
+  """
+  def tags_for_check(check, params)
+
+  def tags_for_check(check, nil), do: check.tags
+  def tags_for_check(check, []), do: check.tags
+
+  def tags_for_check(check, params) when is_list(params) do
+    params
+    |> Credo.Check.Params.tags(check)
+    |> Enum.flat_map(fn
+      :__initial__ -> check.tags
+      tag -> [tag]
     end)
   end
 
@@ -425,15 +508,17 @@ defmodule Credo.Execution do
   end
 
   @doc false
-  def run_pipeline(initial_exec, pipeline_key) do
+  def run_pipeline(%__MODULE__{} = initial_exec, pipeline_key)
+      when is_atom(pipeline_key) and not is_nil(pipeline_key) do
     initial_pipeline = get_pipeline(initial_exec, pipeline_key)
 
-    Enum.reduce(initial_pipeline, initial_exec, fn {group_name, _list}, outer_exec ->
-      outer_pipeline = get_pipeline(outer_exec, pipeline_key)
+    Enum.reduce(initial_pipeline, initial_exec, fn {group_name, _list}, exec_inside_pipeline ->
+      outer_pipeline = get_pipeline(exec_inside_pipeline, pipeline_key)
+
       task_group = outer_pipeline[group_name]
 
-      Enum.reduce(task_group, outer_exec, fn {task_mod, opts}, inner_exec ->
-        Credo.Execution.Task.run(task_mod, inner_exec, opts)
+      Enum.reduce(task_group, exec_inside_pipeline, fn {task_mod, opts}, exec_inside_task_group ->
+        Credo.Execution.Task.run(task_mod, exec_inside_task_group, opts)
       end)
     end)
   end
@@ -521,5 +606,26 @@ defmodule Credo.Execution do
 
   def ensure_execution_struct(value, fun_name) do
     raise("Expected #{fun_name} to return %Credo.Execution{}, got: #{inspect(value)}")
+  end
+
+  @doc false
+  def get_rerun(exec) do
+    case get_assign(exec, "credo.rerun.previous_execution") do
+      nil -> :notfound
+      previous_exec -> {previous_exec, get_assign(exec, "credo.rerun.files_that_changed")}
+    end
+  end
+
+  defp put_rerun(exec, previous_exec, files_that_changed) do
+    exec
+    |> put_assign("credo.rerun.previous_execution", previous_exec)
+    |> put_assign(
+      "credo.rerun.files_that_changed",
+      Enum.map(files_that_changed, fn filename ->
+        filename
+        |> Path.expand()
+        |> Path.relative_to_cwd()
+      end)
+    )
   end
 end

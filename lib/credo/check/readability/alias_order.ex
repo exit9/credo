@@ -45,7 +45,8 @@ defmodule Credo.Check.Readability.AliasOrder do
   alias Credo.Code.Name
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Code.prewalk(source_file, &traverse(&1, &2, issue_meta))
@@ -64,7 +65,7 @@ defmodule Credo.Check.Readability.AliasOrder do
 
   defp traverse_groups(group, acc, issue_meta) do
     group
-    |> Credo.Backports.Enum.chunk_every(2, 1)
+    |> Enum.chunk_every(2, 1)
     |> Enum.reduce_while(nil, &process_group/2)
     |> case do
       nil ->

@@ -9,16 +9,16 @@ defmodule Credo.Check.Readability.ParenthesesOnZeroArityDefs do
       By default, this check enforces no parentheses, so zero-arity function
       and macro definitions should look like this:
 
-      def summer? do
-        # ...
-      end
+          def summer? do
+            # ...
+          end
 
-      If the `:parens` option is set to `true` for this check, then the check
+      If the `:parens` param is set to `true` for this check, then the check
       enforces zero-arity function and macro definitions to have parens:
 
-      def summer?() do
-        # ...
-      end
+          def summer?() do
+            # ...
+          end
 
       Like all `Readability` issues, this one is not a technical concern.
       But you can improve the odds of others reading and liking your code by making
@@ -28,18 +28,18 @@ defmodule Credo.Check.Readability.ParenthesesOnZeroArityDefs do
 
   alias Credo.Check.Params
 
-  @moduledoc false
-
   @def_ops [:def, :defp, :defmacro, :defmacrop]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     parens? = Params.get(params, :parens, __MODULE__)
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta, parens?))
   end
 
+  # TODO: consider for experimental check front-loader (ast)
   for op <- @def_ops do
     # catch variables named e.g. `defp`
     defp traverse({unquote(op), _, nil} = ast, issues, _issue_meta, _parens?) do

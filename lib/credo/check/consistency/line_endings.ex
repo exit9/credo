@@ -2,9 +2,12 @@ defmodule Credo.Check.Consistency.LineEndings do
   use Credo.Check,
     run_on_all: true,
     base_priority: :high,
+    tags: [:formatter],
     explanations: [
       check: """
-      Windows and *nix systems use different line-endings in files.
+      Windows and Linux/macOS systems use different line-endings in files.
+
+      It seems like a good idea not to mix these in the same codebase.
 
       While this is not necessarily a concern for the correctness of your code,
       you should use a consistent style throughout your codebase.
@@ -14,7 +17,8 @@ defmodule Credo.Check.Consistency.LineEndings do
   @collector Credo.Check.Consistency.LineEndings.Collector
 
   @doc false
-  def run(source_files, exec, params \\ []) when is_list(source_files) do
+  @impl true
+  def run_on_all_source_files(exec, source_files, params) do
     @collector.find_and_append_issues(source_files, exec, params, &issues_for/3)
   end
 

@@ -24,6 +24,47 @@ defmodule Credo.Check.Readability.ParenthesesOnZeroArityDefsTest do
     |> refute_issues()
   end
 
+  test "it should NOT report expected code /2" do
+    """
+    defmodule Mix.Tasks.Credo do
+      def foo!, do: impl().foo!()
+      def foo?, do: impl().foo?()
+    end
+    """
+    |> to_source_file
+    |> run_check(@described_check)
+    |> refute_issues()
+  end
+
+  test "it should NOT report a violation with no parens if parens: true" do
+    """
+    defmodule Mix.Tasks.Credo do
+      def good?() do
+        :ok
+      end
+
+      def bang!() do
+        :nok
+      end
+    end
+    """
+    |> to_source_file
+    |> run_check(@described_check, parens: true)
+    |> refute_issues()
+  end
+
+  test "it should NOT report a violation with no parens if parens: true /2" do
+    """
+    defmodule Mix.Tasks.Credo do
+      def foo!, do: impl().foo!()
+      def foo?, do: impl().foo?()
+    end
+    """
+    |> to_source_file
+    |> run_check(@described_check, parens: true)
+    |> assert_issues()
+  end
+
   #
   # cases raising issues
   #

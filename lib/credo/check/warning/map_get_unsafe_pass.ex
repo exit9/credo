@@ -1,6 +1,7 @@
 defmodule Credo.Check.Warning.MapGetUnsafePass do
   use Credo.Check,
     base_priority: :normal,
+    tags: [:controversial],
     explanations: [
       check: """
       `Map.get/2` can lead into runtime errors if the result is passed into a pipe
@@ -9,9 +10,9 @@ defmodule Credo.Check.Warning.MapGetUnsafePass do
 
       Example:
 
-            %{foo: [1, 2 ,3], bar: [4, 5, 6]}
-            |> Map.get(:missing_key)
-            |> Enum.each(&IO.puts/1)
+          %{foo: [1, 2 ,3], bar: [4, 5, 6]}
+          |> Map.get(:missing_key)
+          |> Enum.each(&IO.puts/1)
 
       This will cause a `Protocol.UndefinedError`, since `nil` isn't `Enumerable`.
       Often times while iterating over enumerables zero iterations is preferrable
@@ -27,7 +28,8 @@ defmodule Credo.Check.Warning.MapGetUnsafePass do
   @unsafe_modules [:Enum]
 
   @doc false
-  def run(source_file, params \\ []) do
+  @impl true
+  def run(%SourceFile{} = source_file, params) do
     issue_meta = IssueMeta.for(source_file, params)
 
     Credo.Code.prewalk(source_file, &traverse(&1, &2, issue_meta))

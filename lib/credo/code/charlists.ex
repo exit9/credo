@@ -6,7 +6,7 @@ defmodule Credo.Code.Charlists do
   alias Credo.Code.InterpolationHelper
   alias Credo.SourceFile
 
-  @string_sigil_delimiters [
+  string_sigil_delimiters = [
     {"(", ")"},
     {"[", "]"},
     {"{", "}"},
@@ -15,16 +15,23 @@ defmodule Credo.Code.Charlists do
     {"\"", "\""},
     {"'", "'"}
   ]
-  @heredocs__sigil_delimiters [
+
+  heredocs_sigil_delimiters = [
     {"'''", "'''"},
     {~s("""), ~s(""")}
   ]
-  @all_string_sigils Enum.flat_map(@string_sigil_delimiters, fn {b, e} ->
-                       [{"~s#{b}", e}, {"~S#{b}", e}]
-                     end)
-  @all_heredocs_sigils Enum.flat_map(@heredocs__sigil_delimiters, fn {b, e} ->
-                         [{"~s#{b}", e}, {"~S#{b}", e}]
-                       end)
+
+  all_string_sigils =
+    Enum.flat_map(string_sigil_delimiters, fn {b, e} ->
+      [{"~s#{b}", e}, {"~S#{b}", e}]
+    end)
+
+  all_string_sigil_ends = Enum.map(string_sigil_delimiters, &elem(&1, 1))
+
+  all_heredocs_sigils =
+    Enum.flat_map(heredocs_sigil_delimiters, fn {b, e} ->
+      [{"~s#{b}", e}, {"~S#{b}", e}]
+    end)
 
   @doc """
   Replaces all characters inside charlists with the equivalent amount of
@@ -47,7 +54,7 @@ defmodule Credo.Code.Charlists do
     acc
   end
 
-  for {sigil_start, sigil_end} <- @all_heredocs_sigils do
+  for {sigil_start, sigil_end} <- all_heredocs_sigils do
     defp parse_code(<<unquote(sigil_start)::utf8, t::binary>>, acc, replacement) do
       parse_heredoc(
         t,
@@ -66,7 +73,7 @@ defmodule Credo.Code.Charlists do
     parse_heredoc(t, acc <> ~s('''), replacement, ~s('''))
   end
 
-  for {sigil_start, sigil_end} <- @all_string_sigils do
+  for {sigil_start, sigil_end} <- all_string_sigils do
     defp parse_code(<<unquote(sigil_start)::utf8, t::binary>>, acc, replacement) do
       parse_string_sigil(
         t,
@@ -190,7 +197,7 @@ defmodule Credo.Code.Charlists do
   # Sigils
   #
 
-  for {_sigil_start, sigil_end} <- @all_string_sigils do
+  for sigil_end <- all_string_sigil_ends do
     defp parse_string_sigil("", acc, unquote(sigil_end), _replacement) do
       acc
     end
